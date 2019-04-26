@@ -1,3 +1,5 @@
+// Group 5
+
 #include <Wire.h>
 #include <Keypad.h>
 
@@ -35,6 +37,7 @@ bool timeout = false;
 unsigned long last_message_time = 0;
 unsigned long status_message_sent = 0;
 
+// Scan for slave address and save it
 void addressScan() {
   int8_t address_max = 127;
 
@@ -52,6 +55,7 @@ void addressScan() {
   }
 }
 
+// Check that passwords match
 bool checkPass() {
   if (password == pass_mem) {
     return true;
@@ -60,6 +64,7 @@ bool checkPass() {
   }
 }
 
+// Send password to slave
 void printPass() {
   char message[16];
   pass_mem.toCharArray(message, 16);
@@ -69,15 +74,18 @@ void printPass() {
   last_message_time = millis();
 }
 
+// Clear inputed password
 void clearPass() {
   pass_mem = "";
 }
 
+// Delete last character of the inputed password
 void backspacePass() {
   pass_mem.remove(pass_mem.length() - 1);
   printPass();
 }
 
+// Add a inputed character to the end of the inputed password
 void writePass(char key) {
   if (pass_mem.length() < password.length()) {
     pass_mem += key;
@@ -94,14 +102,18 @@ void setup() {
 }
 
 void loop() {
+  // Check that connection works, if not scan for slave address
   if (scan_error != 0) {
     addressScan();
   }
 
+  // Only detect motion when armed
   if (armed) {
     motion_detected = digitalRead(motion_pin) || motion_detected;
   }
 
+  // Timeout should happen only if armed and enough time has passed
+  // Also not when already in timeout so it doesn't spam messages
   if ((millis() - timeout_timer > TIMEOUT_TIME) && armed && !timeout) {
     timeout = true;
     Wire.beginTransmission(wire_address);
@@ -109,7 +121,11 @@ void loop() {
     scan_error = Wire.endTransmission();
   }
 
+  // Input only works if not in timeout
+  // To reset, restart arduino
   if (!timeout) {
+    // Send status message if enough time has passed and no password is being writen
+    // and last message is not status message to prevent spamming
     if ((millis() - last_message_time > STATUS_MESSAGE_DELAY) && pass_mem == "" && status_message_sent <= last_message_time) {
       Wire.beginTransmission(wire_address);
       if (armed) {
@@ -123,6 +139,7 @@ void loop() {
 
     char keypressed = keypad.getKey();
 
+    // If system is disarmed only arming button 'A' can be pressed
     if (!armed && keypressed != 'A') {
       keypressed = NO_KEY;
     }
@@ -132,6 +149,7 @@ void loop() {
         break;
       case 'D' :
         Wire.beginTransmission(wire_address);
+        // If password is right, disarm the system
         if (checkPass()) {
           armed = false;
           motion_detected = false;
@@ -142,12 +160,14 @@ void loop() {
         scan_error = Wire.endTransmission();
         last_message_time = millis();
 
+        // Clear password for next attempt
         clearPass();
         break;
       case 'C' :
         backspacePass();
         break;
       case 'A' :
+        // Reset system to armed state
         armed = true;
         status_message_sent = 0;
         last_message_time = 0;
@@ -159,6 +179,7 @@ void loop() {
     }
   }
 
+  // Only ring alarm when system is armed and motion is detected
   if (armed && motion_detected) {
     digitalWrite(buzzer_pin, HIGH);
   } else {

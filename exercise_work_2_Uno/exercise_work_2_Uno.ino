@@ -1,9 +1,11 @@
+// Group 5
+
 #include <Wire.h>
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(2, 3, 5, 6, 7, 8);
 
 
-/* If the master sends data to slave */
+// Receive data from master and show it on LCD
 void receiveEvent(int howMany) {
   String received_message = "";
   char received_char;
